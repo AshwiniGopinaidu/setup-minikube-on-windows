@@ -1,210 +1,118 @@
-# setup-minikube-on-windows
-Step by step guide to Setup minikube at your local and explore creating namespaces
-## 📋 Table of Contents
+# Local Minikube Setup & Namespace Exploration
 
-- [Prerequisites](#-prerequisites)
-- [Step 1 — Enable WSL 2](#step-1--enable-wsl-2)
-- [Step 2 — Install Docker Desktop](#step-2--install-docker-desktop)
-- [Step 3 — Install minikube](#step-3--install-minikube)
-- [Step 4 — Install kubectl](#step-4--install-kubectl)
-- [Step 5 — Start Your Cluster](#step-5--start-your-cluster)
-- [Step 6 — Verify the Cluster](#step-6--verify-the-cluster)
-- [Common kubectl Commands](#-common-kubectl-commands)
-- [Troubleshooting](#-troubleshooting)
-
-## ✅ Prerequisites
-
-| Requirement | Notes |
-|---|---|
-| Windows 10/11 (Home or Pro) | Home edition supported ✅ |
-| WSL 2 | Required by Docker Desktop |
-| Docker Desktop | Acts as the minikube driver |
-| minikube | The local Kubernetes cluster tool |
-| kubectl | CLI to interact with your cluster |
-
-⚠️ **Windows Home users:** Hyper-V is **not supported** on Windows Home. This guide uses the **Docker driver**, which works on all Windows editions.
-
-## Step 1 — Enable WSL 2
-
-Open **PowerShell as Administrator** and run:
-
-```powershell
-wsl --install
-```
-
-This installs WSL 2 along with Ubuntu by default. **Restart your PC** when prompted.
-
-After restarting, verify WSL 2 is active:
-
-```powershell
-wsl --status
-```
-
-You should see `Default Version: 2`.
+This repository contains a comprehensive guide to installing **minikube**, spinning up a local single-node Kubernetes cluster, and mastering Kubernetes **namespaces** for resource isolation.
 
 ---
-## Step 2 — Install Docker Desktop
 
-Download and install Docker Desktop from the official site:
+## 📋 Prerequisites
 
-🔗 [https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/)
+Before beginning, ensure you have a container engine or hypervisor installed on your machine. 
+* [Docker Desktop](https://docker.com) is highly recommended for most operating systems.
 
-After installing:
+---
 
-1. Launch **Docker Desktop** from the Start Menu
-2. Go to **Settings → General** and make sure **"Use the WSL 2 based engine"** is checked
-3. Click **Apply & Restart**
-4. Wait until the 🐳 whale icon in the system tray shows **"Docker Desktop is running"**
+## 🚀 Step 1: Install minikube and kubectl
 
-Verify Docker is working:
+Execute the appropriate installation command for your operating system terminal:
 
+### macOS (via Homebrew)
+```bash
+brew install minikube kubectl
+```
+
+### Linux (via curl)
+```bash
+curl -LO https://googleapis.com
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+```
+
+### Windows (via PowerShell)
 ```powershell
-docker --version
-docker info
+New-Item -Path 'c:\' -Name 'minikube' -ItemType 'directory'
+Invoke-WebRequest -OutFile 'c:\minikube\minikube.exe' -Uri 'https://github.com'
+# Note: Manually add c:\minikube to your System PATH variables
 ```
 
 ---
 
-## Step 3 — Install minikube
+## 🛠️ Step 2: Start the Cluster
 
-Install minikube using **winget** (built into Windows 10/11):
+Launch your local cluster. Minikube will automatically pull the required infrastructure images and configure your local `kubectl` context.
 
-```powershell
-winget install -e --id Kubernetes.minikube
+```bash
+minikube start
 ```
 
-Close and reopen PowerShell, then verify:
-
-```powershell
-minikube version
-```
-
-Set Docker as the default driver so you don't need to specify it every time:
-
-```powershell
-minikube config set driver docker
+Verify that your single-node cluster is online and healthy:
+```bash
+kubectl get nodes
 ```
 
 ---
 
-## Step 4 — Install kubectl
+## 🔍 Step 3: Explore and Create Namespaces
 
-```powershell
-winget install -e --id Kubernetes.kubectl
+Namespaces provide virtual isolation for groups of resources within a single physical cluster.
+
+### 1. View Existing Namespaces
+Kubernetes creates internal system namespaces automatically. List them using:
+```bash
+kubectl get namespaces
+```
+*(Standard default spaces include `default`, `kube-system`, `kube-public`, and `kube-node-lease`.)*
+
+### 2. Create a Custom Namespace (Imperative CLI)
+To quickly provision a temporary `development` space, use the CLI:
+```bash
+kubectl create namespace development
 ```
 
-Close and reopen PowerShell, then verify:
+### 3. Create a Custom Namespace (Declarative Manifest)
+For production systems, track configuration states using manifest files. Create a file named `production-ns.yaml`:
 
-```powershell
-kubectl version --client
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
 ```
+
+Apply the file to your cluster:
+```bash
+kubectl apply -f production-ns.yaml
+```
+
+### 4. Deploy a Resource inside a Specific Namespace
+By default, resources deploy to the `default` namespace. To isolate an Nginx pod inside your new `development` namespace, append the namespace flag:
+```bash
+kubectl run test-nginx --image=nginx --namespace=development
+```
+
+### 5. Verify the Isolated Resource
+Running standard commands will show nothing because `kubectl` defaults to the standard namespace. You must explicitly target your custom space:
+```bash
+kubectl get pods --namespace=development
+```
+
+### 6. Permanently Change Your Default Namespace Context
+To avoid typing the namespace flag for every single CLI command, update your current context:
+```bash
+kubectl config set-context --current --namespace=development
+```
+Now, standard commands like `kubectl get pods` will target the `development` environment by default.
 
 ---
 
-## Step 5 — Start Your Cluster
+## 🖥️ Step 4: Graphical UI & Cluster Teardown
 
-Make sure Docker Desktop is running, then:
-
-```powershell
-minikube start --driver=docker
-```
-
-Expected output:
-
-```
-🎉  Done! kubectl is now configured to use "minikube" cluster and "default" namespace by default
-```
-
-Optionally, open the Kubernetes Dashboard in your browser:
-
-```powershell
+### Launch the Dashboard
+If you prefer a visual web console to audit your cluster and toggle between namespaces, launch the built-in dashboard:
+```bash
 minikube dashboard
 ```
 
----
-
-## Step 6 — Verify the Cluster
-
-Run these to confirm everything is healthy:
-
-```powershell
-# Overall cluster status
-minikube status
-
-# Check the node is Ready
-kubectl get nodes
-
-# List all running system pods
-kubectl get pods -A
-```
-
-You should see a node with status **`Ready`**.
-
----
-
-## 📟 Common kubectl Commands
-
-```powershell
-# List all pods in the default namespace
-kubectl get pods
-
-# List all services
-kubectl get services
-
-# List all deployments
-kubectl get deployments
-
-# Deploy a test nginx app
-kubectl create deployment hello-minikube --image=nginx
-
-# Expose it so you can access it
-kubectl expose deployment hello-minikube --type=NodePort --port=80
-
-# Open the service in your browser
-minikube service hello-minikube
-
-# View logs for a pod
-kubectl logs <pod-name>
-
-# Describe a pod (useful for debugging)
-kubectl describe pod <pod-name>
-
-# Delete a deployment
-kubectl delete deployment hello-minikube
-
-# Stop the cluster (preserves state)
+### Stop the Cluster
+When you are done experimenting, safely shut down your cluster to free up your machine's CPU and memory:
+```bash
 minikube stop
-
-# Delete the cluster entirely
-minikube delete
 ```
-
----
-
-## 🔧 Troubleshooting
-
-See the full troubleshooting guide: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-
-**Quick reference:**
-
-| Error | Fix |
-|---|---|
-| `Hyper-V PowerShell Module is not available` | Use `--driver=docker` |
-| `Docker is not running` | Start Docker Desktop first |
-| `minikube start` hangs or fails | Run `minikube delete --all` then retry |
-| `kubectl` not found | Reinstall: `winget install Kubernetes.kubectl` |
-| WSL 2 not installed | Run `wsl --install` as Administrator |
-
----
-
-## 📂 Folder Structure
-
-```
-minikube-windows/
-├── README.md            ← Step-by-step setup guide (you are here)
-├── TROUBLESHOOTING.md   ← Common errors and fixes
-└── .gitignore
-```
-
----
-
